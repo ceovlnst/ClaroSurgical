@@ -1,1 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Actualizar modelo GLB</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 40px;
+    }
+    .card {
+      max-width: 520px;
+      margin: auto;
+      background: #020617;
+      padding: 24px;
+      border-radius: 14px;
+      border: 1px solid #334155;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary {
+      background: #38bdf8;
+      color: #020617;
+    }
+    button.secondary {
+      background: transparent;
+      border: 1px solid #475569;
+      color: #e5e7eb;
+      margin-left: 8px;
+    }
+    input[type="file"] {
+      margin-top: 10px;
+    }
+    .status {
+      margin-top: 14px;
+      font-size: 0.9rem;
+      color: #cbd5f5;
+    }
+    a {
+      color: #38bdf8;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h2>Actualizar modelo GLB</h2>
+
+    <div class="status" id="status">Cargando estado…</div>
+
+    <input type="file" id="fileInput" accept=".glb" />
+
+    <br>
+
+    <button class="primary" onclick="upload()">Subir modelo</button>
+    <button class="secondary" onclick="loadStatus()">Actualizar estado</button>
+  </div>
+
+<script>
+  // 🔴 PEGA AQUÍ LA URL /exec DE TU WEBAPP (Apps Script)
+  const API_URL = 'https://script.google.com/macros/s/AKfycbxk5-AFQ_5_l3fmxzOmeDkBtM75jG4CEQsp-346S5i0879J_9X3sp1wzyA4Ua3RxqRJoQ/exec';
+
+  async function loadStatus() {
+    const status = document.getElementById('status');
+    status.innerText = 'Cargando estado…';
+
+    try {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+
+      if (!data.success) {
+        status.innerText = 'Error: ' + data.error;
+        return;
+      }
+
+      const sizeMB = data.sizeBytes
+        ? (data.sizeBytes / 1024 / 1024).toFixed(1) + ' MB'
+        : '—';
+
+      const modified = data.modifiedTime
+        ? new Date(data.modifiedTime).toLocaleString()
+        : '—';
+
+      status.innerHTML =
+        'Archivo: ' + (data.name || '—') + '<br>' +
+        'Tamaño: ' + sizeMB + '<br>' +
+        'Modificado: ' + modified + '<br>' +
+        '<a href="' + data.viewUrl + '" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>';
+
+    } catch (e) {
+      status.innerText = 'Error de conexión';
+    }
+  }
+
+  async function upload() {
+    const status = document.getElementById('status');
+    const file = document.getElementById('fileInput').files[0];
+
+    if (!file) {
+      alert('Selecciona un archivo .glb');
+      return;
+    }
+
+    if (!file.name.toLowerCase().endsWith('.glb')) {
+      alert('El archivo debe tener extensión .glb');
+      return;
+    }
+
+    status.innerText = 'Preparando archivo…';
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const bytes = Array.from(new Int8Array(buffer));
+
+      const payload = {
+        bytes: bytes,
+        mimeType: file.type || 'model/gltf-binary',
+        filename: file.name
+      };
+
+      status.innerText = 'Subiendo archivo…';
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        status.innerText = 'Error al subir: ' + data.error;
+        return;
+      }
+
+      status.innerText = 'Modelo actualizado correctamente';
+      loadStatus();
+
+    } catch (e) {
+      status.innerText = 'Error de conexión al subir: ' + e.message;
+    }
+  }
+
+  // Cargar estado al abrir
+  loadStatus();
+</script>
+</body>
+</html>
 
