@@ -193,17 +193,17 @@
       </div>
 
       <div class="field">
-        <label data-i18n="idhospital">Hospital ID</label>
+        <label for="idHospital" data-i18n="idhospital">Hospital ID</label>
         <input type="text" id="idHospital" />
       </div>
 
       <div class="field">
-        <label data-i18n="case">Case number</label>
+        <label for="caseNumber" data-i18n="case">Case number</label>
         <input type="text" id="caseNumber" />
       </div>
 
       <div class="field">
-        <label data-i18n="password">Hospital password</label>
+        <label for="password" data-i18n="password">Hospital password</label>
         <input type="password" id="password" />
       </div>
 
@@ -212,12 +212,12 @@
       </div>
 
       <div class="field">
-        <label data-i18n="file">GLB file</label>
+        <label for="fileInput" data-i18n="file">GLB file</label>
         <input type="file" id="fileInput" accept=".glb" />
       </div>
 
       <div class="field">
-        <label data-i18n="patient">Patient ID</label>
+        <label for="displayName" data-i18n="patient">Patient ID</label>
         <input type="text" id="displayName" />
       </div>
 
@@ -257,7 +257,9 @@
       loading: "Loading status…",
       uploading: "Uploading file…",
       success: "File updated successfully",
-      error: "Error"
+      required: "Please complete all required fields.",
+      connError: "Connection error",
+      statusPrefix: "File: "
     },
     es: {
       subtitle: "Actualización segura de archivos clínicos",
@@ -273,87 +275,128 @@
       loading: "Cargando estado…",
       uploading: "Subiendo archivo…",
       success: "Archivo actualizado correctamente",
-      error: "Error"
+      required: "Por favor, completa todos los campos obligatorios.",
+      connError: "Error de conexión",
+      statusPrefix: "Archivo: "
     }
   };
 
+  let currentLang = 'en';
+
+  function t(key) {
+    return (translations[currentLang] && translations[currentLang][key]) ||
+           (translations.en && translations.en[key]) ||
+           key;
+  }
+
   function setLanguage(lang) {
+    currentLang = translations[lang] ? lang : 'en';
+    document.getElementById('langSelect').value = currentLang;
+
     document.querySelectorAll("[data-i18n]").forEach(el => {
       const key = el.getAttribute("data-i18n");
-      if (translations[lang] && translations[lang][key]) {
-        el.textContent = translations[lang][key];
-      }
+      const txt = t(key);
+      if (txt) el.textContent = txt;
     });
   }
 
+  // Inicializar en inglés
   setLanguage("en");
 
   function showStatus(text, type) {
     const s = document.getElementById("status");
     s.textContent = text;
-    s.className = "status " + (type || "");
+    s.className = "status" + (type ? " " + type : "");
     s.style.display = "block";
   }
 
-  function getParams() {
-    const idHospital = idHospitalInput.value.trim();
-    const caseNumber = caseNumberInput.value.trim();
+  function getCaseParams() {
+    const idHospital = document.getElementById("idHospital").value.trim();
+    const caseNumber = document.getElementById("caseNumber").value.trim();
     return { idHospital, caseNumber };
   }
 
   async function loadStatus() {
-    const { idHospital, caseNumber } = getParams();
-    if (!idHospital || !caseNumber) return;
-    showStatus(translations.en.loading);
+    const { idHospital, caseNumber } = getCaseParams();
+    if (!idHospital || !caseNumber) {
+      showStatus(t("required"), "error");
+      return;
+    }
+
+    showStatus(t("loading"), "");
 
     try {
-      const res = await fetch(`${API_URL}?idHospital=${idHospital}&case=${caseNumber}`);
+      const url = API_URL
+        + '?idHospital=' + encodeURIComponent(idHospital)
+        + '&case=' + encodeURIComponent(caseNumber);
+
+      const res = await fetch(url);
       const data = await res.json();
+
       if (!data.success) {
-        showStatus(data.error, "error");
+        showStatus(String(data.error || "Error"), "error");
         return;
       }
-      showStatus("File: " + data.name, "success");
-    } catch {
-      showStatus("Connection error", "error");
+
+      const fileName = data.name || (data.fileId ? "ID: " + data.fileId : "N/A");
+      showStatus(t("statusPrefix") + fileName, "success");
+
+    } catch (e) {
+      showStatus(t("connError"), "error");
     }
   }
 
   async function upload() {
-    const { idHospital, caseNumber } = getParams();
-    const password = passwordInput.value.trim();
+    const { idHospital, caseNumber } = getCaseParams();
+    const password = document.getElementById("password").value.trim();
+    const fileInput = document.getElementById("fileInput");
+    const displayName = document.getElementById("displayName").value.trim();
     const file = fileInput.files[0];
-    const displayName = displayNameInput.value.trim();
 
-    if (!idHospital || !caseNumber || !password || !file) return;
+    if (!idHospital || !caseNumber || !password || !file) {
+      showStatus(t("required"), "error");
+      return;
+    }
 
-    showStatus(translations.en.uploading);
+    if (!file.name.toLowerCase().endsWith('.glb')) {
+      showStatus("File must have .glb extension", "error");
+      return;
+    }
 
-    const buffer = await file.arrayBuffer();
-    const bytes = Array.from(new Int8Array(buffer));
-
-    const payload = {
-      idHospital,
-      caseNumber,
-      password,
-      bytes,
-      filename: file.name,
-      displayName
-    };
+    showStatus(t("uploading"), "");
 
     try {
+      const buffer = await file.arrayBuffer();
+      const bytes = Array.from(new Int8Array(buffer));
+
+      const payload = {
+        idHospital,
+        caseNumber,
+        password,
+        bytes,
+        mimeType: file.type || 'model/gltf-binary',
+        filename: file.name,
+        displayName
+      };
+
       const res = await fetch(API_URL, {
         method: "POST",
         body: JSON.stringify(payload)
       });
+
       const data = await res.json();
+
       if (!data.success) {
-        showStatus(data.error, "error");
+        showStatus(String(data.error || "Error"), "error");
         return;
       }
-      showStatus(translations.en.success, "success");
-    } catch {
-      showStatus("Connection error", "error");
+
+      showStatus(t("success"), "success");
+      // Opcional: refrescar estado tras subir
+      // await loadStatus();
+
+    } catch (e) {
+      showStatus(t("connError"), "error");
     }
   }
 </script>
