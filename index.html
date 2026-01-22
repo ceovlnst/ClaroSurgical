@@ -1,241 +1,359 @@
 <!doctype html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Actualizar modelo GLB</title>
+  <title>Claro Surgical – Secure GLB Update</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- ====== STYLE ====== -->
   <style>
+    :root {
+      --brand: #9b2c6f;          /* fuchsia mate oscuro */
+      --brand-soft: #f7e9f1;
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text-main: #1f2933;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --success: #2e7d32;
+      --error: #c62828;
+    }
+
+    * { box-sizing: border-box; }
+
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      padding: 40px;
-    }
-    .card {
-      max-width: 520px;
-      margin: auto;
-      background: #020617;
-      padding: 24px;
-      border-radius: 14px;
-      border: 1px solid #334155;
-    }
-    h2 {
-      margin-top: 0;
-      margin-bottom: 12px;
-    }
-    .field {
-      margin-top: 12px;
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, Helvetica, Arial, sans-serif;
+      color: var(--text-main);
       display: flex;
-      flex-direction: column;
-      gap: 4px;
-      font-size: 0.9rem;
+      align-items: center;
+      justify-content: center;
     }
+
+    .container {
+      width: 100%;
+      max-width: 540px;
+      padding: 24px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .brand {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: 0.3px;
+    }
+
+    .subtitle {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .lang-switch {
+      margin-top: 12px;
+    }
+
+    select {
+      padding: 6px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #fff;
+      font-size: 0.85rem;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+      border: 1px solid var(--border);
+    }
+
+    .section-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--brand);
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
     label {
-      color: #cbd5f5;
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-main);
     }
+
     input[type="text"],
     input[type="password"],
     input[type="file"] {
-      background: #020617;
-      border-radius: 999px;
-      border: 1px solid #475569;
-      padding: 8px 12px;
-      color: #e5e7eb;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
       font-size: 0.9rem;
     }
+
     input[type="file"] {
-      padding: 6px 0;
-      border-radius: 0;
-      border: none;
+      padding: 6px;
     }
+
+    input:focus {
+      outline: none;
+      border-color: var(--brand);
+    }
+
+    .actions {
+      margin-top: 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     button {
-      margin-top: 14px;
-      padding: 10px 16px;
+      flex: 1;
+      padding: 12px 14px;
       border-radius: 999px;
       border: none;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
-      font-size: 0.95rem;
     }
-    button.primary {
-      background: #38bdf8;
-      color: #020617;
+
+    .btn-primary {
+      background: var(--brand);
+      color: #fff;
     }
-    button.secondary {
-      background: transparent;
-      border: 1px solid #475569;
-      color: #e5e7eb;
-      margin-left: 8px;
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--brand);
+      border: 1px solid var(--brand);
     }
-    .actions {
-      margin-top: 8px;
-    }
+
     .status {
-      margin-top: 14px;
-      font-size: 0.9rem;
-      color: #cbd5f5;
+      margin-top: 18px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      padding: 12px;
+      border-radius: 8px;
+      background: var(--brand-soft);
+      color: var(--text-main);
+      display: none;
     }
-    a {
-      color: #38bdf8;
+
+    .status.success {
+      background: #e8f5e9;
+      color: var(--success);
+    }
+
+    .status.error {
+      background: #fdecea;
+      color: var(--error);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 18px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
     }
   </style>
 </head>
 
 <body>
-  <div class="card">
-    <h2>Actualizar modelo GLB</h2>
-
-    <div class="field">
-      <label for="idHospital">ID Hospital</label>
-      <input type="text" id="idHospital" placeholder="Ej: 2025001" />
+  <div class="container">
+    <div class="header">
+      <div class="brand">Claro Surgical</div>
+      <div class="subtitle" data-i18n="subtitle">
+        Secure clinical file update
+      </div>
+      <div class="lang-switch">
+        <select id="langSelect" onchange="setLanguage(this.value)">
+          <option value="en">English</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
     </div>
 
-    <div class="field">
-      <label for="caseNumber">Número de caso</label>
-      <input type="text" id="caseNumber" placeholder="Ej: 1, 2, 3..." />
+    <div class="card">
+      <div class="section-title" data-i18n="section">
+        Case identification
+      </div>
+
+      <div class="field">
+        <label data-i18n="idhospital">Hospital ID</label>
+        <input type="text" id="idHospital" />
+      </div>
+
+      <div class="field">
+        <label data-i18n="case">Case number</label>
+        <input type="text" id="caseNumber" />
+      </div>
+
+      <div class="field">
+        <label data-i18n="password">Hospital password</label>
+        <input type="password" id="password" />
+      </div>
+
+      <div class="section-title" data-i18n="fileSection">
+        File update
+      </div>
+
+      <div class="field">
+        <label data-i18n="file">GLB file</label>
+        <input type="file" id="fileInput" accept=".glb" />
+      </div>
+
+      <div class="field">
+        <label data-i18n="patient">Patient ID</label>
+        <input type="text" id="displayName" />
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="upload()" data-i18n="upload">
+          Upload new version
+        </button>
+        <button class="btn-secondary" onclick="loadStatus()" data-i18n="statusBtn">
+          Check status
+        </button>
+      </div>
+
+      <div class="status" id="status"></div>
     </div>
 
-    <div class="field">
-      <label for="password">Contraseña</label>
-      <input type="password" id="password" placeholder="Introduce la contraseña del hospital" />
-    </div>
-
-    <div class="status" id="status">
-      Indica IDHospital, Número de caso y pulsa "Actualizar estado".
-    </div>
-
-    <div class="field">
-      <label for="fileInput">Archivo GLB</label>
-      <input type="file" id="fileInput" accept=".glb" />
-    </div>
-
-    <div class="field">
-      <label for="displayName">ID Paciente</label>
-      <input
-        type="text"
-        id="displayName"
-        placeholder="Ej: PAC-000123"
-      />
-    </div>
-
-    <div class="actions">
-      <button class="primary" onclick="upload()">Subir nueva versión</button>
-      <button class="secondary" onclick="loadStatus()">Actualizar estado</button>
-    </div>
+    <footer>
+      © Claro Surgical
+    </footer>
   </div>
 
+<!-- ====== SCRIPT ====== -->
 <script>
   const API_URL = 'https://clarosurgical.ceo-vlnst.workers.dev';
 
-  function getCaseParams() {
-    const idHospital = document.getElementById('idHospital').value.trim();
-    const caseNumber = document.getElementById('caseNumber').value.trim();
-    if (!idHospital || !caseNumber) {
-      alert('Rellena ID Hospital y Número de caso.');
-      return null;
+  const translations = {
+    en: {
+      subtitle: "Secure clinical file update",
+      section: "Case identification",
+      idhospital: "Hospital ID",
+      case: "Case number",
+      password: "Hospital password",
+      fileSection: "File update",
+      file: "GLB file",
+      patient: "Patient ID",
+      upload: "Upload new version",
+      statusBtn: "Check status",
+      loading: "Loading status…",
+      uploading: "Uploading file…",
+      success: "File updated successfully",
+      error: "Error"
+    },
+    es: {
+      subtitle: "Actualización segura de archivos clínicos",
+      section: "Identificación del caso",
+      idhospital: "ID del hospital",
+      case: "Número de caso",
+      password: "Contraseña del hospital",
+      fileSection: "Actualización del archivo",
+      file: "Archivo GLB",
+      patient: "ID del paciente",
+      upload: "Subir nueva versión",
+      statusBtn: "Consultar estado",
+      loading: "Cargando estado…",
+      uploading: "Subiendo archivo…",
+      success: "Archivo actualizado correctamente",
+      error: "Error"
     }
+  };
+
+  function setLanguage(lang) {
+    document.querySelectorAll("[data-i18n]").forEach(el => {
+      const key = el.getAttribute("data-i18n");
+      if (translations[lang] && translations[lang][key]) {
+        el.textContent = translations[lang][key];
+      }
+    });
+  }
+
+  setLanguage("en");
+
+  function showStatus(text, type) {
+    const s = document.getElementById("status");
+    s.textContent = text;
+    s.className = "status " + (type || "");
+    s.style.display = "block";
+  }
+
+  function getParams() {
+    const idHospital = idHospitalInput.value.trim();
+    const caseNumber = caseNumberInput.value.trim();
     return { idHospital, caseNumber };
   }
 
   async function loadStatus() {
-    const status = document.getElementById('status');
-    const params = getCaseParams();
-    if (!params) return;
-
-    status.innerText = 'Cargando estado…';
+    const { idHospital, caseNumber } = getParams();
+    if (!idHospital || !caseNumber) return;
+    showStatus(translations.en.loading);
 
     try {
-      const url = API_URL
-        + '?idHospital=' + encodeURIComponent(params.idHospital)
-        + '&case=' + encodeURIComponent(params.caseNumber);
-
-      const res = await fetch(url);
+      const res = await fetch(`${API_URL}?idHospital=${idHospital}&case=${caseNumber}`);
       const data = await res.json();
-
       if (!data.success) {
-        status.innerText = 'Error: ' + data.error;
+        showStatus(data.error, "error");
         return;
       }
-
-      const archivoActual = data.name && data.name.trim()
-        ? data.name
-        : ('ID: ' + (data.fileId || 'desconocido'));
-
-      const directUrl = data.directUrl || '(no disponible)';
-
-      status.innerHTML =
-        'IDHospital: <strong>' + params.idHospital + '</strong><br>' +
-        'Caso: <strong>' + params.caseNumber + '</strong><br>' +
-        'Archivo en Drive: <strong>' + archivoActual + '</strong><br>' +
-        'URL descarga fija:<br>' +
-        '<code style="font-size:0.75rem;word-break:break-all;">' + directUrl + '</code><br>' +
-        '<a href="' + (data.viewUrl || directUrl) + '" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>';
-
-    } catch (e) {
-      status.innerText = 'Error de conexión';
+      showStatus("File: " + data.name, "success");
+    } catch {
+      showStatus("Connection error", "error");
     }
   }
 
   async function upload() {
-    const status = document.getElementById('status');
-    const params = getCaseParams();
-    if (!params) return;
+    const { idHospital, caseNumber } = getParams();
+    const password = passwordInput.value.trim();
+    const file = fileInput.files[0];
+    const displayName = displayNameInput.value.trim();
 
-    const file = document.getElementById('fileInput').files[0];
-    const displayNameInput = document.getElementById('displayName').value.trim();
-    const passwordInput = document.getElementById('password').value.trim();
+    if (!idHospital || !caseNumber || !password || !file) return;
 
-    if (!file) {
-      alert('Selecciona un archivo .glb');
-      return;
-    }
+    showStatus(translations.en.uploading);
 
-    if (!file.name.toLowerCase().endsWith('.glb')) {
-      alert('El archivo debe tener extensión .glb');
-      return;
-    }
+    const buffer = await file.arrayBuffer();
+    const bytes = Array.from(new Int8Array(buffer));
 
-    if (!passwordInput) {
-      alert('Introduce la contraseña del hospital.');
-      return;
-    }
-
-    status.innerText = 'Preparando archivo…';
+    const payload = {
+      idHospital,
+      caseNumber,
+      password,
+      bytes,
+      filename: file.name,
+      displayName
+    };
 
     try {
-      const buffer = await file.arrayBuffer();
-      const bytes = Array.from(new Int8Array(buffer));
-
-      const payload = {
-        idHospital: params.idHospital,
-        caseNumber: params.caseNumber,
-        password: passwordInput,
-        bytes: bytes,
-        mimeType: file.type || 'model/gltf-binary',
-        filename: file.name,
-        displayName: displayNameInput
-      };
-
-      status.innerText = 'Subiendo archivo…';
-
       const res = await fetch(API_URL, {
-        method: 'POST',
+        method: "POST",
         body: JSON.stringify(payload)
       });
-
       const data = await res.json();
-
       if (!data.success) {
-        status.innerText = 'Error al subir: ' + data.error;
+        showStatus(data.error, "error");
         return;
       }
-
-      status.innerText = 'Modelo actualizado correctamente';
-      loadStatus();
-
-    } catch (e) {
-      status.innerText = 'Error de conexión al subir: ' + e.message;
+      showStatus(translations.en.success, "success");
+    } catch {
+      showStatus("Connection error", "error");
     }
   }
 </script>
