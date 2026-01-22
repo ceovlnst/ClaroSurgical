@@ -35,6 +35,7 @@
       color: #cbd5f5;
     }
     input[type="text"],
+    input[type="password"],
     input[type="file"] {
       background: #020617;
       border-radius: 999px;
@@ -95,8 +96,13 @@
       <input type="text" id="caseNumber" placeholder="Ej: 1, 2, 3..." />
     </div>
 
+    <div class="field">
+      <label for="password">Contraseña</label>
+      <input type="password" id="password" placeholder="Introduce la contraseña del hospital" />
+    </div>
+
     <div class="status" id="status">
-      Indica IDHospital y Número de caso y pulsa "Actualizar estado".
+      Indica IDHospital, Número de caso y pulsa "Actualizar estado".
     </div>
 
     <div class="field">
@@ -178,6 +184,7 @@
 
     const file = document.getElementById('fileInput').files[0];
     const displayNameInput = document.getElementById('displayName').value.trim();
+    const passwordInput = document.getElementById('password').value.trim();
 
     if (!file) {
       alert('Selecciona un archivo .glb');
@@ -186,6 +193,11 @@
 
     if (!file.name.toLowerCase().endsWith('.glb')) {
       alert('El archivo debe tener extensión .glb');
+      return;
+    }
+
+    if (!passwordInput) {
+      alert('Introduce la contraseña del hospital.');
       return;
     }
 
@@ -198,6 +210,7 @@
       const payload = {
         idHospital: params.idHospital,
         caseNumber: params.caseNumber,
+        password: passwordInput,
         bytes: bytes,
         mimeType: file.type || 'model/gltf-binary',
         filename: file.name,
