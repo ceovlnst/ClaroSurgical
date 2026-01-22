@@ -20,13 +20,42 @@
       border-radius: 14px;
       border: 1px solid #334155;
     }
+    h2 {
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
+    .field {
+      margin-top: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.9rem;
+    }
+    label {
+      color: #cbd5f5;
+    }
+    input[type="text"],
+    input[type="file"] {
+      background: #020617;
+      border-radius: 999px;
+      border: 1px solid #475569;
+      padding: 8px 12px;
+      color: #e5e7eb;
+      font-size: 0.9rem;
+    }
+    input[type="file"] {
+      padding: 6px 0;
+      border-radius: 0;
+      border: none;
+    }
     button {
-      margin-top: 10px;
+      margin-top: 14px;
       padding: 10px 16px;
       border-radius: 999px;
       border: none;
       font-weight: 600;
       cursor: pointer;
+      font-size: 0.95rem;
     }
     button.primary {
       background: #38bdf8;
@@ -38,8 +67,8 @@
       color: #e5e7eb;
       margin-left: 8px;
     }
-    input[type="file"] {
-      margin-top: 10px;
+    .actions {
+      margin-top: 8px;
     }
     .status {
       margin-top: 14px;
@@ -56,26 +85,67 @@
   <div class="card">
     <h2>Actualizar modelo GLB</h2>
 
-    <div class="status" id="status">Cargando estado…</div>
+    <div class="field">
+      <label for="idHospital">ID Hospital</label>
+      <input type="text" id="idHospital" placeholder="Ej: 2025001" />
+    </div>
 
-    <input type="file" id="fileInput" accept=".glb" />
+    <div class="field">
+      <label for="caseNumber">Número de caso</label>
+      <input type="text" id="caseNumber" placeholder="Ej: 1, 2, 3..." />
+    </div>
 
-    <br>
+    <div class="status" id="status">
+      Indica IDHospital y Número de caso y pulsa "Actualizar estado".
+    </div>
 
-    <button class="primary" onclick="upload()">Subir modelo</button>
-    <button class="secondary" onclick="loadStatus()">Actualizar estado</button>
+    <div class="field">
+      <label for="fileInput">Archivo GLB</label>
+      <input type="file" id="fileInput" accept=".glb" />
+    </div>
+
+    <div class="field">
+      <label for="displayName">ID Paciente</label>
+      <input
+        type="text"
+        id="displayName"
+        placeholder="Ej: PAC-000123"
+      />
+    </div>
+
+    <div class="actions">
+      <button class="primary" onclick="upload()">Subir nueva versión</button>
+      <button class="secondary" onclick="loadStatus()">Actualizar estado</button>
+    </div>
   </div>
 
 <script>
-  // 🔴 PEGA AQUÍ LA URL /exec DE TU WEBAPP (Apps Script)
-  const API_URL = 'https://script.google.com/macros/s/AKfycbxk5-AFQ_5_l3fmxzOmeDkBtM75jG4CEQsp-346S5i0879J_9X3sp1wzyA4Ua3RxqRJoQ/exec';
+  // Worker Cloudflare ya configurado
+  const API_URL = 'https://clarosurgical.ceo-vlnst.workers.dev';
+
+  function getCaseParams() {
+    const idHospital = document.getElementById('idHospital').value.trim();
+    const caseNumber = document.getElementById('caseNumber').value.trim();
+    if (!idHospital || !caseNumber) {
+      alert('Rellena ID Hospital y Número de caso.');
+      return null;
+    }
+    return { idHospital, caseNumber };
+  }
 
   async function loadStatus() {
     const status = document.getElementById('status');
+    const params = getCaseParams();
+    if (!params) return;
+
     status.innerText = 'Cargando estado…';
 
     try {
-      const res = await fetch(API_URL);
+      const url = API_URL
+        + '?idHospital=' + encodeURIComponent(params.idHospital)
+        + '&case=' + encodeURIComponent(params.caseNumber);
+
+      const res = await fetch(url);
       const data = await res.json();
 
       if (!data.success) {
@@ -83,19 +153,19 @@
         return;
       }
 
-      const sizeMB = data.sizeBytes
-        ? (data.sizeBytes / 1024 / 1024).toFixed(1) + ' MB'
-        : '—';
+      const archivoActual = data.name && data.name.trim()
+        ? data.name
+        : ('ID: ' + (data.fileId || 'desconocido'));
 
-      const modified = data.modifiedTime
-        ? new Date(data.modifiedTime).toLocaleString()
-        : '—';
+      const directUrl = data.directUrl || '(no disponible)';
 
       status.innerHTML =
-        'Archivo: ' + (data.name || '—') + '<br>' +
-        'Tamaño: ' + sizeMB + '<br>' +
-        'Modificado: ' + modified + '<br>' +
-        '<a href="' + data.viewUrl + '" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>';
+        'IDHospital: <strong>' + params.idHospital + '</strong><br>' +
+        'Caso: <strong>' + params.caseNumber + '</strong><br>' +
+        'Archivo en Drive: <strong>' + archivoActual + '</strong><br>' +
+        'URL descarga fija:<br>' +
+        '<code style="font-size:0.75rem;word-break:break-all;">' + directUrl + '</code><br>' +
+        '<a href="' + (data.viewUrl || directUrl) + '" target="_blank" rel="noopener noreferrer">Abrir en Drive</a>';
 
     } catch (e) {
       status.innerText = 'Error de conexión';
@@ -104,7 +174,11 @@
 
   async function upload() {
     const status = document.getElementById('status');
+    const params = getCaseParams();
+    if (!params) return;
+
     const file = document.getElementById('fileInput').files[0];
+    const displayNameInput = document.getElementById('displayName').value.trim();
 
     if (!file) {
       alert('Selecciona un archivo .glb');
@@ -123,16 +197,18 @@
       const bytes = Array.from(new Int8Array(buffer));
 
       const payload = {
+        idHospital: params.idHospital,
+        caseNumber: params.caseNumber,
         bytes: bytes,
         mimeType: file.type || 'model/gltf-binary',
-        filename: file.name
+        filename: file.name,
+        displayName: displayNameInput
       };
 
       status.innerText = 'Subiendo archivo…';
 
       const res = await fetch(API_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
@@ -150,10 +226,6 @@
       status.innerText = 'Error de conexión al subir: ' + e.message;
     }
   }
-
-  // Cargar estado al abrir
-  loadStatus();
 </script>
 </body>
 </html>
-
