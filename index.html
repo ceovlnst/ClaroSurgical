@@ -159,11 +159,12 @@
     .actions {
       margin-top: 22px;
       display: flex;
-      justify-content: center;
+      gap: 12px;
     }
 
     button {
-      padding: 14px 24px;
+      flex: 1;
+      padding: 14px 18px;
       border-radius: 999px;
       border: none;
       font-size: .9rem;
@@ -174,7 +175,12 @@
     .btn-primary {
       background: var(--brand);
       color: #fff;
-      min-width: 220px;
+    }
+
+    .btn-secondary {
+      background: #fff;
+      color: var(--brand);
+      border: 1.5px solid var(--brand);
     }
 
     .status {
@@ -196,6 +202,68 @@
       color: var(--error);
     }
 
+    .cases-section {
+      margin-top: 24px;
+    }
+
+    .cases-list {
+      margin-top: 8px;
+      max-height: 260px;
+      overflow-y: auto;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 8px 10px;
+      background: #fafbfc;
+    }
+
+    .case-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 6px;
+      border-bottom: 1px solid #e5e7eb;
+      font-size: .85rem;
+      gap: 8px;
+    }
+
+    .case-item:last-child {
+      border-bottom: none;
+    }
+
+    .case-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .case-id {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .case-date {
+      font-size: .75rem;
+      color: var(--text-muted);
+    }
+
+    .case-download-btn {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: none;
+      font-size: .8rem;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--brand);
+      color: #fff;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .no-cases {
+      font-size: .8rem;
+      color: var(--text-muted);
+      padding: 6px 4px;
+    }
+
     footer {
       text-align: center;
       margin-top: 18px;
@@ -205,7 +273,7 @@
 
     @media (max-width: 640px) {
       .row { grid-template-columns: 1fr; }
-      .btn-primary { width: 100%; }
+      .actions { flex-direction: column; }
     }
   </style>
 </head>
@@ -252,9 +320,17 @@
 
       <div class="actions">
         <button class="btn-primary" id="btnUpload">Upload Clinical Case</button>
+        <button class="btn-secondary" id="btnLoadCases">Load my cases</button>
       </div>
 
       <div class="status" id="status"></div>
+
+      <div class="cases-section">
+        <div class="section-title">My clinical cases</div>
+        <div class="cases-list" id="casesList">
+          <div class="no-cases">No cases loaded yet.</div>
+        </div>
+      </div>
     </div>
 
     <footer>© Claro Surgical</footer>
@@ -271,7 +347,9 @@
     fileInput: document.getElementById('fileInput'),
     fileName: document.getElementById('fileName'),
     status: document.getElementById('status'),
-    btnUpload: document.getElementById('btnUpload')
+    btnUpload: document.getElementById('btnUpload'),
+    btnLoadCases: document.getElementById('btnLoadCases'),
+    casesList: document.getElementById('casesList')
   };
 
   el.fileInput.addEventListener('change', () => {
@@ -296,6 +374,51 @@
     return btoa(binary);
   }
 
+  // Renderiza lista de casos con fecha
+  function renderCasesList(cases) {
+    el.casesList.innerHTML = '';
+
+    if (!cases || cases.length === 0) {
+      const noCases = document.createElement('div');
+      noCases.className = 'no-cases';
+      noCases.textContent = 'No cases found for this surgeon.';
+      el.casesList.appendChild(noCases);
+      return;
+    }
+
+    cases.forEach(c => {
+      const item = document.createElement('div');
+      item.className = 'case-item';
+
+      const info = document.createElement('div');
+      info.className = 'case-info';
+
+      const idSpan = document.createElement('div');
+      idSpan.className = 'case-id';
+      idSpan.textContent = 'Patient ID: ' + c.patientId;
+
+      const dateSpan = document.createElement('div');
+      dateSpan.className = 'case-date';
+      dateSpan.textContent = c.createdAt
+        ? 'Created: ' + c.createdAt
+        : 'Created: (no date)';
+
+      info.appendChild(idSpan);
+      info.appendChild(dateSpan);
+
+      const btn = document.createElement('a');
+      btn.className = 'case-download-btn';
+      btn.textContent = 'Download';
+      btn.href = c.url || c.viewUrl || '#';
+      btn.target = '_blank';
+      btn.rel = 'noopener';
+
+      item.appendChild(info);
+      item.appendChild(btn);
+      el.casesList.appendChild(item);
+    });
+  }
+
   // UPLOAD: crea o actualiza un caso con Patient ID como identificador
   el.btnUpload.addEventListener('click', async () => {
     const idSurgeon = el.idSurgeon.value.trim();
@@ -315,7 +438,7 @@
 
       const payload = {
         apiKey: API_KEY,
-        mode: 'updateCase',  // en GAS lo tratamos como "subida/actualización"
+        mode: 'updateCase',  // en GAS se trata como creación/actualización
         idSurgeon,
         password,
         caso: patientId,                // Patient ID como identificador de caso
@@ -339,6 +462,47 @@
       showStatus(data.message || 'Clinical case uploaded successfully.', 'success');
     } catch (e) {
       showStatus('Connection error', 'error');
+    }
+  });
+
+  // LOAD CASES: lista todos los casos del cirujano
+  el.btnLoadCases.addEventListener('click', async () => {
+    const idSurgeon = el.idSurgeon.value.trim();
+    const password  = el.password.value.trim();
+
+    if (!idSurgeon || !password) {
+      showStatus('Please complete Surgeon ID and password to load your cases.', 'error');
+      return;
+    }
+
+    showStatus('Loading your cases…');
+
+    try {
+      const payload = {
+        apiKey: API_KEY,
+        mode: 'listCases',
+        idSurgeon,
+        password
+      };
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        showStatus(String(data.error || data.message || 'Error loading cases.'), 'error');
+        renderCasesList([]);
+        return;
+      }
+
+      renderCasesList(data.cases || []);
+      showStatus(data.message || 'Cases loaded.', 'success');
+    } catch (e) {
+      showStatus('Connection error', 'error');
+      renderCasesList([]);
     }
   });
 </script>
