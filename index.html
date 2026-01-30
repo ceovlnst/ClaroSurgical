@@ -230,24 +230,12 @@
       <div class="row">
         <div class="field">
           <label>Surgeon ID</label>
-          <input type="text" id="idHospital" />
+          <input type="text" id="idSurgeon" />
         </div>
 
         <div class="field">
-          <label>Case number</label>
-          <select id="caseNumber">
-            <option value="">Select case</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-            <option value="6">6</option>
-            <option value="7">7</option>
-            <option value="8">8</option>
-            <option value="9">9</option>
-            <option value="10">10</option>
-          </select>
+          <label>Patient ID</label>
+          <input type="text" id="patientId" />
         </div>
       </div>
 
@@ -269,8 +257,8 @@
         </div>
 
         <div class="field">
-          <label>Patient ID</label>
-          <input type="text" id="displayName" />
+          <label>Optional display name</label>
+          <input type="text" id="displayName" placeholder="Optional visible label" />
         </div>
       </div>
 
@@ -287,10 +275,11 @@
 
 <script>
   const API_URL = 'https://clarosurgical.ceo-vlnst.workers.dev';
+  const API_KEY = 'ClarityForAll';
 
   const el = {
-    idHospital: document.getElementById('idHospital'),
-    caseNumber: document.getElementById('caseNumber'),
+    idSurgeon: document.getElementById('idSurgeon'),
+    patientId: document.getElementById('patientId'),
     password: document.getElementById('password'),
     fileInput: document.getElementById('fileInput'),
     fileName: document.getElementById('fileName'),
@@ -312,59 +301,36 @@
     el.status.style.display = 'block';
   }
 
+  async function fileToBase64(file) {
+    const buffer = await file.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binary);
+  }
+
+  // CHECK STATUS: consulta si existe un caso para (IDSurgeon, Patient ID)
   el.btnStatus.addEventListener('click', async () => {
-    const idHospital = el.idHospital.value.trim();
-    const caseNumber = el.caseNumber.value.trim();
+    const idSurgeon = el.idSurgeon.value.trim();
+    const patientId = el.patientId.value.trim();
+    const password  = el.password.value.trim();
 
-    if (!idHospital || !caseNumber) {
-      showStatus('Please complete Surgeon ID and Case number.', 'error');
+    if (!idSurgeon || !patientId || !password) {
+      showStatus('Please complete Surgeon ID, Patient ID and password.', 'error');
       return;
     }
 
-    showStatus('Loading status…');
+    showStatus('Checking case status…');
 
     try {
-      const res = await fetch(
-        `${API_URL}?idHospital=${encodeURIComponent(idHospital)}&case=${encodeURIComponent(caseNumber)}`
-      );
-      const data = await res.json();
-
-      if (!data.success) {
-        showStatus(String(data.error || 'Error'), 'error');
-        return;
-      }
-
-      showStatus('File: ' + data.name, 'success');
-    } catch (e) {
-      showStatus('Connection error', 'error');
-    }
-  });
-
-  el.btnUpload.addEventListener('click', async () => {
-    const idHospital = el.idHospital.value.trim();
-    const caseNumber = el.caseNumber.value.trim();
-    const password = el.password.value.trim();
-    const file = el.fileInput.files[0];
-    const displayName = el.displayName.value.trim();
-
-    if (!idHospital || !caseNumber || !password || !file) {
-      showStatus('Please complete all required fields.', 'error');
-      return;
-    }
-
-    showStatus('Uploading file…');
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const bytes = Array.from(new Int8Array(buffer));
-
       const payload = {
-        idHospital,
-        caseNumber,
+        apiKey: API_KEY,
+        mode: 'getCaseUrl',
+        idSurgeon,
         password,
-        bytes,
-        filename: file.name,
-        displayName
+        caso: patientId
       };
 
       const res = await fetch(API_URL, {
@@ -375,11 +341,59 @@
       const data = await res.json();
 
       if (!data.success) {
-        showStatus(String(data.error || 'Error'), 'error');
+        showStatus(String(data.error || data.message || 'Error checking case.'), 'error');
         return;
       }
 
-      showStatus('File updated successfully', 'success');
+      showStatus('Case found. URL: ' + (data.url || 'N/A'), 'success');
+    } catch (e) {
+      showStatus('Connection error', 'error');
+    }
+  });
+
+  // UPLOAD: crea o actualiza un caso con Patient ID como identificador
+  el.btnUpload.addEventListener('click', async () => {
+    const idSurgeon = el.idSurgeon.value.trim();
+    const patientId = el.patientId.value.trim();
+    const password  = el.password.value.trim();
+    const file      = el.fileInput.files[0];
+    const displayName = el.displayName.value.trim(); // opcional, ahora no lo usamos en GAS, pero se puede loggear después
+
+    if (!idSurgeon || !patientId || !password || !file) {
+      showStatus('Please complete Surgeon ID, Patient ID, password and select a file.', 'error');
+      return;
+    }
+
+    showStatus('Uploading file…');
+
+    try {
+      const contentBase64 = await fileToBase64(file);
+
+      const payload = {
+        apiKey: API_KEY,
+        mode: 'updateCase',
+        idSurgeon,
+        password,
+        caso: patientId,                // Patient ID como identificador de caso
+        filename: file.name,
+        mimeType: file.type || 'model/gltf-binary',
+        contentBase64,
+        displayName                     // opcional: por si en el futuro lo quieres usar en el backend
+      };
+
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (!data.success) {
+        showStatus(String(data.error || data.message || 'Error uploading file.'), 'error');
+        return;
+      }
+
+      showStatus(data.message || 'File updated successfully.', 'success');
     } catch (e) {
       showStatus('Connection error', 'error');
     }
